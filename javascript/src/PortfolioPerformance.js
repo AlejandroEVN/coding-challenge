@@ -15,50 +15,59 @@ const transactions = [
   { effectiveDate: new Date(2021, 8, 7, 9, 0, 0), value: 0.1 },
 ];
 
-const period = [
-  { effectiveDate: new Date(2021, 8, 1, 1, 0, 0) },
-  { effectiveDate: new Date(2021, 8, 2, 1, 0, 0) },
-  { effectiveDate: new Date(2021, 8, 3, 1, 0, 0) },
-  { effectiveDate: new Date(2021, 8, 4, 1, 0, 0) },
-  { effectiveDate: new Date(2021, 8, 5, 1, 0, 0) },
-  { effectiveDate: new Date(2021, 8, 6, 1, 0, 0) },
-  { effectiveDate: new Date(2021, 8, 7, 1, 0, 0) },
-];
+function getMergedList(list1, list2) {
+  return [...list1, ...list2];
+}
 
-function getChangesIn(list, day) {
-  return list.filter((item) => item.effectiveDate.getDay() === day);
+function sortListBy(attribute, list) {
+  return list.sort((a, b) => a[attribute] - b[attribute]);
+}
+
+function stringifyDate(date) {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
 export function getDailyPortfolioValues() {
-  const result = [];
-  let lastValue = 0;
-  let lastPriceKnown = prices[0].price;
+  const mergedList = getMergedList(prices, transactions);
 
-  period.forEach(({ effectiveDate }) => {
-    const day = effectiveDate.getDay();
-    const transactionsMade = getChangesIn(transactions, day).map(
-      ({ value }) => value
-    );
+  sortListBy("effectiveDate", mergedList);
 
-    let changeInValueFromTransactions = 0;
+  const portfolioValues = [];
+  let currentIndex = 0;
+  let currentValue = 0;
+  let lastPriceKnown = 0;
+  let lastDateChecked = "";
 
-    if (transactionsMade.length)
-      changeInValueFromTransactions = transactionsMade.reduce(
-        (sum, curr) => curr + sum
-      );
+  mergedList.forEach(({ effectiveDate, price, value }) => {
+    if (!lastDateChecked) lastDateChecked = stringifyDate(effectiveDate);
 
-    lastValue += changeInValueFromTransactions * lastPriceKnown;
-
-    const priceChanges = getChangesIn(prices, day);
-
-    if (priceChanges.length) {
-      priceChanges.forEach(({ price }) => {
-        lastValue *= price / lastPriceKnown;
-        lastPriceKnown = price;
-      });
+    if (!(stringifyDate(effectiveDate) === lastDateChecked)) {
+      lastDateChecked = stringifyDate(effectiveDate);
+      currentIndex++;
     }
 
-    result.push({ effectiveDate, value: parseFloat(lastValue.toFixed(5)) });
+    if (!lastPriceKnown) lastPriceKnown = price;
+
+    if (price) {
+      currentValue *= price / lastPriceKnown;
+      lastPriceKnown = price;
+    }
+
+    if (value) {
+      currentValue += value * lastPriceKnown;
+    }
+
+    if (!currentValue) return;
+
+    portfolioValues[currentIndex] = {
+      effectiveDate: new Date(
+        effectiveDate.getFullYear(),
+        effectiveDate.getMonth(),
+        effectiveDate.getDate(),
+        1
+      ),
+      value: parseFloat(currentValue.toFixed(5)),
+    };
   });
-  return result;
+  return portfolioValues;
 }
