@@ -41,7 +41,7 @@ export function getDailyPortfolioValues() {
   mergedList.forEach(({ effectiveDate, price, value }) => {
     if (!lastDateChecked) lastDateChecked = stringifyDate(effectiveDate);
 
-    if (!(stringifyDate(effectiveDate) === lastDateChecked)) {
+    if (stringifyDate(effectiveDate) !== lastDateChecked) {
       lastDateChecked = stringifyDate(effectiveDate);
       currentIndex++;
     }
