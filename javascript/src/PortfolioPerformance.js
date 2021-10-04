@@ -15,59 +15,81 @@ const transactions = [
   { effectiveDate: new Date(2021, 8, 7, 9, 0, 0), value: 0.1 },
 ];
 
+export function getDailyPortfolioValues() {
+  const pricesAndTransactionsList = getMergedList(prices, transactions);
+
+  sortListBy(pricesAndTransactionsList, "effectiveDate");
+
+  const portfolioValues = {};
+  let lastPriceKnown = 0;
+
+  pricesAndTransactionsList.forEach(({ effectiveDate, price, value }) => {
+    if (price && !lastPriceKnown) lastPriceKnown = price;
+    resetHoursInDate(effectiveDate);
+
+    let currentPortfolioValue = getCurrentPortfolioValue(
+      portfolioValues,
+      effectiveDate
+    );
+
+    let newPortofolioValue;
+
+    if (price) {
+      newPortofolioValue = getValueAfterPriceChange(
+        currentPortfolioValue,
+        price,
+        lastPriceKnown
+      );
+      lastPriceKnown = price;
+    }
+
+    if (value)
+      newPortofolioValue = getValueAfterTransaction(
+        currentPortfolioValue,
+        value,
+        lastPriceKnown
+      );
+
+    if (!newPortofolioValue) return;
+
+    portfolioValues[effectiveDate] = {
+      effectiveDate: effectiveDate,
+      value: formatFloatNumber(newPortofolioValue, 5),
+    };
+    return;
+  });
+
+  return Object.values(portfolioValues);
+}
+
 function getMergedList(list1, list2) {
   return [...list1, ...list2];
 }
 
-function sortListBy(attribute, list) {
+function sortListBy(list, attribute) {
   return list.sort((a, b) => a[attribute] - b[attribute]);
 }
 
-function stringifyDate(date) {
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+function formatFloatNumber(value, decimals) {
+  return parseFloat(value.toFixed(decimals));
 }
 
-export function getDailyPortfolioValues() {
-  const mergedList = getMergedList(prices, transactions);
-
-  sortListBy("effectiveDate", mergedList);
-
-  const portfolioValues = [];
-  let currentIndex = 0;
-  let currentValue = 0;
-  let lastPriceKnown = 0;
-  let lastDateChecked = "";
-
-  mergedList.forEach(({ effectiveDate, price, value }) => {
-    if (!lastDateChecked) lastDateChecked = stringifyDate(effectiveDate);
-
-    if (!(stringifyDate(effectiveDate) === lastDateChecked)) {
-      lastDateChecked = stringifyDate(effectiveDate);
-      currentIndex++;
-    }
-
-    if (!lastPriceKnown) lastPriceKnown = price;
-
-    if (price) {
-      currentValue *= price / lastPriceKnown;
-      lastPriceKnown = price;
-    }
-
-    if (value) {
-      currentValue += value * lastPriceKnown;
-    }
-
-    if (!currentValue) return;
-
-    portfolioValues[currentIndex] = {
-      effectiveDate: new Date(
-        effectiveDate.getFullYear(),
-        effectiveDate.getMonth(),
-        effectiveDate.getDate(),
-        1
-      ),
-      value: parseFloat(currentValue.toFixed(5)),
-    };
-  });
-  return portfolioValues;
+function getCurrentPortfolioValue(portfolio, date) {
+  if (portfolio[date]) return portfolio[date].value;
+  const lastEntry = Object.keys(portfolio).pop();
+  return portfolio[lastEntry]?.value || 0;
 }
+
+function getValueAfterPriceChange(portfolioValue, currentPrice, previousPrice) {
+  return (portfolioValue * currentPrice) / previousPrice;
+}
+
+function getValueAfterTransaction(portfolioValue, transactionValue, price) {
+  return portfolioValue + transactionValue * price;
+}
+
+function resetHoursInDate(date) {
+  return (date = new Date(date.setHours(1, 0, 0, 0)));
+}
+
+// console.log(getDailyPortfolioValues());
