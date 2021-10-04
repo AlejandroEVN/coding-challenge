@@ -91,5 +91,3 @@ function getValueAfterTransaction(portfolioValue, transactionValue, price) {
 function resetHoursInDate(date) {
   return (date = new Date(date.setHours(1, 0, 0, 0)));
 }
-
-// console.log(getDailyPortfolioValues());
