@@ -18,48 +18,49 @@ const transactions = [
 export function getDailyPortfolioValues() {
   const pricesAndTransactionsList = getMergedList(prices, transactions);
 
+  if (pricesAndTransactionsList.length === 0) return [];
+
   sortListBy(pricesAndTransactionsList, "effectiveDate");
 
-  const portfolioValues = {};
+  const portfolioDailyValues = {};
   let lastPriceKnown = 0;
 
   pricesAndTransactionsList.forEach(({ effectiveDate, price, value }) => {
     if (price && !lastPriceKnown) lastPriceKnown = price;
-    resetHoursInDate(effectiveDate);
 
-    let currentPortfolioValue = getCurrentPortfolioValue(
-      portfolioValues,
-      effectiveDate
+    const newDate = resetHoursInDate(effectiveDate);
+
+    const currentPortfolioValue = getCurrentPortfolioValue(
+      portfolioDailyValues,
+      newDate
     );
 
     let newPortofolioValue;
 
-    if (price) {
-      newPortofolioValue = getValueAfterPriceChange(
-        currentPortfolioValue,
-        price,
-        lastPriceKnown
-      );
-      lastPriceKnown = price;
-    }
+    let operation;
 
-    if (value)
-      newPortofolioValue = getValueAfterTransaction(
-        currentPortfolioValue,
-        value,
-        lastPriceKnown
-      );
+    if (price) operation = getValueAfterPriceChange;
+
+    if (value) operation = getValueAfterTransaction;
+
+    newPortofolioValue = operation(
+      currentPortfolioValue,
+      price || value,
+      lastPriceKnown
+    );
+
+    lastPriceKnown = price || lastPriceKnown;
 
     if (!newPortofolioValue) return;
 
-    portfolioValues[effectiveDate] = {
-      effectiveDate: effectiveDate,
-      value: formatFloatNumber(newPortofolioValue, 5),
-    };
-    return;
+    return insertNewValueInPortfolio(
+      portfolioDailyValues,
+      newDate,
+      newPortofolioValue
+    );
   });
 
-  return Object.values(portfolioValues);
+  return Object.values(portfolioDailyValues);
 }
 
 function getMergedList(list1, list2) {
@@ -89,5 +90,12 @@ function getValueAfterTransaction(portfolioValue, transactionValue, price) {
 }
 
 function resetHoursInDate(date) {
-  return (date = new Date(date.setHours(1, 0, 0, 0)));
+  return new Date(date.setHours(1, 0, 0, 0));
+}
+
+function insertNewValueInPortfolio(portfolio, newDate, newValue) {
+  return (portfolio[newDate] = {
+    effectiveDate: newDate,
+    value: formatFloatNumber(newValue, 5),
+  });
 }
