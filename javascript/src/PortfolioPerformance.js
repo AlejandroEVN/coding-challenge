@@ -26,6 +26,7 @@ export function getDailyPortfolioValues() {
   let lastPriceKnown = 0;
 
   pricesAndTransactionsList.forEach(({ effectiveDate, price, value }) => {
+    if (!price && !value) throw new Error("Invalid data");
     if (price && !lastPriceKnown) lastPriceKnown = price;
 
     const newDate = resetHoursInDate(effectiveDate);
@@ -35,8 +36,7 @@ export function getDailyPortfolioValues() {
       newDate
     );
 
-    let newPortofolioValue;
-
+    let newPortofolioValue = 0;
     let operation;
 
     if (price) operation = getValueAfterPriceChange;
